@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 import requests
 import xml.etree.ElementTree as ET
+import json 
+import logging
+from contextlib import asynccontextmanager 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -20,14 +23,74 @@ except ImportError:
     HAS_TF = False
 
 load_dotenv()
-app = FastAPI(title="CandleFlow Core Brain Engine Layer")
 
-# Mount our state-persisted virtual account ledger database instance
+# Bind directly into Uvicorn's live terminal logging channel output stream
+logger = logging.getLogger("uvicorn.error")
+
+# ----------------------------------------------------------------------
+# 💾 APPLICATION LIFESPAN & HIGH-SPEED RAM CACHE MATRIX
+# ----------------------------------------------------------------------
+GLOBAL_TICKER_CACHE = []
+
+@asynccontextmanager
+async def application_lifespan(app: FastAPI):
+    """Triggers exactly once on server boot up using modern FastAPI specifications.
+
+    Loads and builds the master stock registry universe straight from local storage.
+    """
+    global GLOBAL_TICKER_CACHE
+    logger.info("📡 --- [CandleFlow Core] INITIALIZING LOCAL FILESYSTEM SEEDER ---")
+    
+    # Calculate file location paths dynamically relative to this main.py file position
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    local_json_path = os.path.join(base_dir, "data", "nse_tickers.json")
+    
+    try:
+        if os.path.exists(local_json_path):
+            with open(local_json_path, "r", encoding="utf-8") as f:
+                raw_data = json.load(f)
+                
+            GLOBAL_TICKER_CACHE = [
+                {
+                    "symbol": f"{symbol}.NS", 
+                    "raw_symbol": symbol.strip().lower(),
+                    "name": name.strip()
+                }
+                for symbol, name in raw_data.items()
+            ]
+            logger.info(f"✅ [CandleFlow Core] Local Cache Seeding Complete! Loaded {len(GLOBAL_TICKER_CACHE)} structural equities cleanly from disk.")
+        else:
+            raise FileNotFoundError(f"Master dataset matrix asset missing at: {local_json_path}")
+            
+    except Exception as e:
+        logger.error(f"🚨 Local filesystem initialization failure: {e}. Reverting to safety baseline array.")
+        fallback_raw = {
+            "ADANIENT": "Adani Enterprises Ltd", "AXISBANK": "Axis Bank Ltd",
+            "BAJFINANCE": "Bajaj Finance Ltd", "BHARTIARTL": "Bharti Airtel Ltd",
+            "COALINDIA": "Coal India Ltd", "FEDERALBNK": "The Federal Bank Ltd",
+            "HDFCBANK": "HDFC Bank Ltd", "HINDUNILVR": "Hindustan Unilever Ltd",
+            "INFY": "Infosys Ltd", "ITC": "ITC Ltd", "ICICIBANK": "ICICI Bank Ltd",
+            "JSWSTEEL": "JSW Steel Ltd", "MARUTI": "Maruti Suzuki India Ltd",
+            "NESTLEIND": "Nestle India Ltd", "RELIANCE": "Reliance Industries Ltd",
+            "SBIN": "State Bank of India", "SUNPHARMA": "Sun Pharmaceutical Industries Ltd",
+            "TCS": "Tata Consultancy Services Ltd", "TATASTEEL": "Tata Steel Ltd",
+            "TITAN": "Titan Company Ltd", "WIPRO": "Wipro Ltd"
+        }
+        GLOBAL_TICKER_CACHE = [
+            {"symbol": f"{s}.NS", "raw_symbol": s.lower(), "name": n}
+            for s, n in fallback_raw.items()
+        ]
+        logger.info(f"✅ Safe Backstop Array Engaged: Loaded {len(GLOBAL_TICKER_CACHE)} fallback nodes.")
+
+    yield 
+    logger.info("🛑 Cleaning memory tracking channels.")
+
+# Initialize application instance under lifecycle constraints
+app = FastAPI(title="CandleFlow Core Brain Engine Layer", lifespan=application_lifespan)
+
 broker = PaperBroker()
 
-# ----------------------------------------------------------------------
-# 🧠 STARTUP LAYER: LOAD DUAL-CLASS ATTENTION CORE
-# ----------------------------------------------------------------------
+# 🧠 DIRECTORY LSTM ATTENTION PARSING LAYER
 LSTM_PATH = 'models/candleflow_lstm.keras'  
 lstm_model = None
 
@@ -68,15 +131,42 @@ def fetch_local_indian_news(ticker_symbol):
         return []
 
 # ----------------------------------------------------------------------
+# 🔍 INTERACTIVE ROUTE: STRICT SCREENER PREFIX-ONLY SEARCH ENGINE
+# ----------------------------------------------------------------------
+@app.get("/api/tickers/search")
+def search_tickers_dynamically(q: str = ""):
+    """Scans cache instantly and enforces strict prefix matching.
+
+    Completely eliminates random inner-string substring matches.
+    """
+    query = q.lower().strip()
+    if not query:
+        return []
+        
+    prefix_matches = []
+    
+    # Iterate through cache and collect ONLY literal prefix starters
+    for stock in GLOBAL_TICKER_CACHE:
+        raw_sym = stock["raw_symbol"]
+        name_lower = stock["name"].lower().strip()
+        
+        # 🎯 STRICT RULE: Ticker code OR company name MUST start directly with the typed string
+        if raw_sym.startswith(query) or name_lower.startswith(query):
+            prefix_matches.append({"symbol": stock["symbol"], "name": stock["name"]})
+
+    # Sort everything cleanly from A to Z by company name
+    sorted_results = sorted(prefix_matches, key=lambda x: x["name"])
+    
+    # Return the clean capped results
+    return sorted_results[:8]
+
+# ----------------------------------------------------------------------
 # 📈 ROUTE 1: REAL-TIME PORTFOLIO & RISK BOUNDARY TRACKER
 # ----------------------------------------------------------------------
 @app.get("/api/portfolio")
 def get_live_portfolio_dashboard():
-    """Calculates active equity metrics and processes trailing trailing exit targets."""
     active_positions = broker.wallet["active_positions"]
     current_prices = {}
-    
-    # Query streaming session ticks for all open target tickets
     for ticker in active_positions.keys():
         try:
             t_data = yf.Ticker(ticker).history(period="1d")
@@ -85,10 +175,45 @@ def get_live_portfolio_dashboard():
         except Exception as e:
             print(f"🚨 Real-time pricing feed connection interrupted for {ticker}: {e}")
 
-    # Actively process risk stop checks against memory nodes before printing state
     broker.scan_active_positions_for_exits(current_prices)
-    
     return broker.get_portfolio_summary(current_prices)
+
+# ----------------------------------------------------------------------
+# 💳 TRANSACTION GATEWAY: LIVE PORTFOLIO POSITION ROUTING
+# ----------------------------------------------------------------------
+@app.post("/api/portfolio/add")
+def allocate_asset_to_portfolio(payload: dict):
+    """Intercepts frontend selections to book a new virtual position inside 
+
+    the running paper broker memory instance.
+    """
+    ticker = payload.get("ticker", "").upper().strip()
+    if not ticker:
+        return {"status": "error", "message": "Missing symbol token."}
+        
+    try:
+        ticker_data = yf.Ticker(ticker).history(period="1d")
+        if ticker_data.empty:
+            return {"status": "error", "message": f"Could not stream market ticks for {ticker}"}
+            
+        latest_close = float(ticker_data['Close'].iloc[-1])
+        
+        # Open an initial buy allocation position inside our running ledger data
+        was_opened = broker.open_position_live(
+            ticker=ticker,
+            direction="BUY",
+            close_price=latest_close,
+            net_spread=0.15,               
+            atr_buffer=latest_close * 0.02 
+        )
+        
+        if was_opened:
+            return {"status": "success", "message": f"Successfully allocated {ticker} into portfolio matrix."}
+        else:
+            return {"status": "error", "message": "Transaction rejected: Insufficient cash balance or limit breached."}
+            
+    except Exception as e:
+        return {"status": "error", "message": f"Execution gate error: {str(e)}"}
 
 # ----------------------------------------------------------------------
 # 📡 ROUTE 2: LOOKUP GATEWAY & AUTOMATED LIVE ORDER EXECUTION
@@ -99,21 +224,27 @@ def get_stock_full_info(query: str):
         u_query = query.upper().strip()
         best_ticker = None
         
-        if u_query in ["RELIANCE", "RIL"]: best_ticker = "RELIANCE.NS"
-        elif u_query in ["WIPRO", "WIT"]: best_ticker = "WIPRO.NS"
-        elif u_query in ["INFY", "INFOSYS"]: best_ticker = "INFY.NS"
-        elif u_query in ["TCS", "TATA CONSULTANCY"]: best_ticker = "TCS.NS"
-        elif u_query == "SAIL": best_ticker = "SAIL.NS"
-            
-        if not best_ticker:
-            search = yf.Search(query, max_results=10)
-            for result in search.quotes:
-                symbol = result.get('symbol', '')
-                if result.get('quoteType') == 'EQUITY' and symbol.endswith('.NS'):
-                    best_ticker = symbol
-                    break
+        if u_query.endswith(".NS"):
+            best_ticker = u_query
+        else:
+            if u_query in ["RELIANCE", "RIL"]: best_ticker = "RELIANCE.NS"
+            elif u_query in ["WIPRO", "WIT"]: best_ticker = "WIPRO.NS"
+            elif u_query in ["INFY", "INFOSYS"]: best_ticker = "INFY.NS"
+            elif u_query in ["TCS", "TATA CONSULTANCY"]: best_ticker = "TCS.NS"
+            elif u_query == "SAIL": best_ticker = "SAIL.NS"
+                
             if not best_ticker:
-                best_ticker = f"{u_query}.NS"
+                search = yf.Search(query, max_results=10)
+                for result in search.quotes:
+                    symbol = result.get('symbol', '')
+                    if result.get('quoteType') == 'EQUITY' and symbol.endswith('.NS'):
+                        best_ticker = symbol
+                        break
+                if not best_ticker:
+                    best_ticker = f"{u_query}.NS"
+
+        if best_ticker.endswith(".NS.NS"):
+            best_ticker = best_ticker.replace(".NS.NS", ".NS")
 
         df = yf.download(best_ticker, period="2y", interval="1d", progress=False, ignore_tz=True)
         nifty_df = yf.download("^NSEI", period="2y", interval="1d", progress=False, ignore_tz=True)
@@ -165,7 +296,6 @@ def get_stock_full_info(query: str):
         p_sell, p_buy = 0.50, 0.50
         engine_mode = "Dual-Class Sigmoid Compass + Active Paper Trader"
 
-        # 🤖 3. PURE DEEP RECURRENT INFERENCE PASS
         if lstm_model is not None:
             lstm_tensor_input = np.expand_dims(scaled_sequence, axis=0)
             raw_pred = float(lstm_model.predict(lstm_tensor_input, verbose=0)[0][0])
@@ -174,13 +304,12 @@ def get_stock_full_info(query: str):
         else:
             return {"error": "Directional recurrent array is uninitialized."}
 
-        # ⚡ 4. SUPERVISOR GATEWAY ENGINE (DETERMINES SIGNAL EXTERNALLY)
+        # ⚡ 4. SUPERVISOR GATEWAY ENGINE (UPDATED THRESHOLDS)
         net_spread = abs(p_buy - p_sell)
         direction = "BUY" if p_buy > p_sell else "SELL"
         display_confidence = p_buy if direction == "BUY" else p_sell
         current_bb_width = float(df_features['BB_Width'].iloc[-1] * 100)
         
-        # Real-scale indicators extracted for precision ledger logging
         atr_raw_val = float(df_features['ATR'].iloc[-1])
         position_status_text = "No Live Positions Modified // Monitoring Feature Matrix"
 
@@ -191,42 +320,39 @@ def get_stock_full_info(query: str):
         print(f"----------------------------------------------------------\n")
 
         # 🛠️ RULE 1: VOLATILITY COMPRESSION OVERRIDE
-        if current_bb_width < 4.0:
+        if current_bb_width < 3.0:  
             ai_signal_text = "HOLD"
             confidence_band = f"Volatility Squeeze Active ({current_bb_width:.1f}% Compression) // Range Bound Trap"
             
         # 🛠️ RULE 2: DIRECTIONAL PROBABILITY SPREAD EVALUATION
         else:
             if direction == "BUY":
-                if net_spread >= 0.12:
+                if net_spread >= 0.08:  
                     ai_signal_text = "STRONG BUY"
                     confidence_band = f"High-Velocity Breakout Trajectory Confirmed ({p_buy*100:.1f}%)"
-                elif net_spread >= 0.04:
+                elif net_spread >= 0.01:  
                     ai_signal_text = "BUY"
                     confidence_band = f"Structural Momentum Alignment Confirmed ({p_buy*100:.1f}%)"
                 else:
                     ai_signal_text = "HOLD"
-                    confidence_band = f"Weak Directional Spread Matrix ({net_spread*100:.1f}%) // Stand Aside"
+                    confidence_band = f"Neutral Model Confidence Spread Matrix ({net_spread*100:.1f}%)"
             else:
-                if net_spread >= 0.12:
+                if net_spread >= 0.08:  
                     ai_signal_text = "STRONG SELL"
                     confidence_band = f"Premium Bearish Acceleration Confirmed ({p_sell*100:.1f}%)"
-                elif net_spread >= 0.04:
+                elif net_spread >= 0.01:  
                     ai_signal_text = "SELL"
                     confidence_band = f"Validated Downside Trend Continuity ({p_sell*100:.1f}%)"
                 else:
                     ai_signal_text = "HOLD"
-                    confidence_band = f"Weak Directional Spread Matrix ({net_spread*100:.1f}%) // Stand Aside"
+                    confidence_band = f"Neutral Model Confidence Spread Matrix ({net_spread*100:.1f}%)"
 
         # 🛠️ RULE 3: BROADER MARKET PROTECTION COVERAGE
         market_slope = float(df_features['MACD_Hist_Slope'].iloc[-1]) if 'MACD_Hist_Slope' in df_features.columns else 0.0
-        if market_slope < -0.15 and "BUY" in ai_signal_text:
+        if market_slope < -0.25 and "BUY" in ai_signal_text:  
             ai_signal_text = "HOLD"
             confidence_band = "Macro Index Downside Momentum Protection Override Active"
-
-        # ----------------------------------------------------------------------
-        # 🟢 AUTOMATED REAL-TIME POSITION ROUTING LAYERS
-        # ----------------------------------------------------------------------
+            
         if "BUY" in ai_signal_text or "SELL" in ai_signal_text:
             was_opened = broker.open_position_live(
                 ticker=best_ticker,

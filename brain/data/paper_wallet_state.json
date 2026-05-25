@@ -1,5 +1,5 @@
 {
-    "cash": 25000.0,
+    "cash": 1562.5,
     "equity_curve": [
         100000.0
     ],
@@ -19,6 +19,38 @@
             "stop_loss": 2235.0469053077904,
             "take_profit": 2460.506042900044,
             "timestamp": "2026-05-25 12:56:19"
+        },
+        "BAJFINANCE.NS": {
+            "type": "SELL",
+            "entry_price": 941.0499877929688,
+            "capital": 12500.0,
+            "stop_loss": 975.5767800467355,
+            "take_profit": 871.9964032854352,
+            "timestamp": "2026-05-25 14:11:48"
+        },
+        "DIXON.NS": {
+            "type": "SELL",
+            "entry_price": 11809.0,
+            "capital": 6250.0,
+            "stop_loss": 12515.92857142857,
+            "take_profit": 10395.142857142857,
+            "timestamp": "2026-05-25 15:25:53"
+        },
+        "MANAPPURAM.NS": {
+            "type": "SELL",
+            "entry_price": 325.70001220703125,
+            "capital": 3125.0,
+            "stop_loss": 341.79973540512196,
+            "take_profit": 293.5005658108498,
+            "timestamp": "2026-05-25 15:26:05"
+        },
+        "ICICIBANK.NS": {
+            "type": "BUY",
+            "entry_price": 1292.0,
+            "capital": 1562.5,
+            "stop_loss": 1257.6178676060267,
+            "take_profit": 1360.7642647879463,
+            "timestamp": "2026-05-25 15:26:12"
         }
     },
     "closed_trades_history": []

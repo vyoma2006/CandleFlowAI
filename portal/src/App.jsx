@@ -4,14 +4,40 @@ import {
   Search, Newspaper, BarChart3, Radio, Percent, AlertTriangle
 } from 'lucide-react';
 
-// 🎯 FIX 1: IMPORT THE LIVE TELEMETRY ACCOUNTING PANEL
 import PortfolioTracker from './components/PortfolioTracker';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('RELIANCE');
+  const [typedInput, setTypedInput] = useState(''); // Tracks live keystroke strings
+  const [suggestions, setSuggestions] = useState([]); // Stores dynamic backend match options
+  const [showDropdown, setShowDropdown] = useState(false); // Dropdown visibility flag
   const [stockData, setStockData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // ----------------------------------------------------------------------
+  // ⏱️ CLIENT-SIDE REQUEST DEBOUNCE PERFORMANCE TUNING
+  // ----------------------------------------------------------------------
+  useEffect(() => {
+    const cleanInput = typedInput.trim();
+    if (!cleanInput || cleanInput.endsWith('.NS')) {
+      setSuggestions([]);
+      return;
+    }
+
+    // Delays the fetch thread by 150ms to keep backend query lines highly performant
+    const delayDebounceThread = setTimeout(async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/api/tickers/search?q=${encodeURIComponent(cleanInput)}`);
+        const data = await response.json();
+        setSuggestions(data);
+      } catch (err) {
+        console.error("🚨 Autocomplete streaming line interrupted:", err);
+      }
+    }, 150);
+
+    return () => clearTimeout(delayDebounceThread);
+  }, [typedInput]);
 
   const fetchStockAnalysis = async (queryStr) => {
     setLoading(true);
@@ -25,6 +51,7 @@ export default function App() {
         setStockData(null);
       } else {
         setStockData(data);
+        setTypedInput(''); // Flush typing workspace clean on a successful load
       }
     } catch (err) {
       setError("Failed to communicate with CandleFlow API gateway. Verify backend is running.");
@@ -40,8 +67,12 @@ export default function App() {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      fetchStockAnalysis(searchQuery.trim());
+    const targetQuery = typedInput.trim() ? typedInput.trim().toUpperCase() : searchQuery;
+    if (targetQuery) {
+      const standardQuery = targetQuery.endsWith('.NS') ? targetQuery : `${targetQuery}.NS`;
+      setSearchQuery(standardQuery);
+      fetchStockAnalysis(standardQuery);
+      setShowDropdown(false);
     }
   };
 
@@ -52,7 +83,7 @@ export default function App() {
     if (upperSig.includes("BUY")) return "bg-green-950 text-green-400 border-green-600";
     if (upperSig.includes("STRONG SELL")) return "bg-rose-950 text-rose-400 border-rose-500 animate-pulse";
     if (upperSig.includes("SELL")) return "bg-red-950 text-red-400 border-red-600";
-    return "bg-amber-950 text-amber-400 border-amber-600"; // HOLD
+    return "bg-amber-950 text-amber-400 border-amber-600";
   };
 
   const computeRiskProfile = (data) => {
@@ -106,17 +137,50 @@ export default function App() {
           </div>
         </div>
 
-        <form onSubmit={handleSearchSubmit} className="relative w-full max-w-md mx-4">
-          <input
-            type="text"
-            placeholder="Search Ticker (e.g. RELIANCE, TCS, WIPRO)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-11 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/30 transition-all font-mono"
-          />
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-          <button type="submit" className="hidden">Analyze</button>
-        </form>
+        {/* 🛠️ HYBRID SCREENER-STYLE SEARCH BLOCK */}
+        <div className="relative w-full max-w-md mx-4">
+          <form onSubmit={handleSearchSubmit} className="relative w-full">
+            <input
+              type="text"
+              autoComplete="off" 
+              placeholder="Search Ticker (e.g. F, Bank, Tata, Reliance)..."
+              value={typedInput}
+              onChange={(e) => {
+                setTypedInput(e.target.value);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 250)} 
+              className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-11 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/30 transition-all font-mono"
+            />
+            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
+            <button type="submit" className="hidden">Analyze</button>
+          </form>
+
+          {/* FLOATING DROPDOWN PANEL */}
+          {showDropdown && typedInput.trim().length > 0 && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 w-full bg-[#0b1329] border border-slate-800 rounded-xl mt-1.5 shadow-2xl overflow-hidden z-50 max-h-64 overflow-y-auto divide-y divide-slate-800/40 custom-scrollbar">
+              {suggestions.map((item) => (
+                <button
+                  key={item.symbol}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); 
+                    setSearchQuery(item.symbol);
+                    fetchStockAnalysis(item.symbol);
+                    setShowDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-emerald-950/40 font-mono transition-colors flex justify-between items-center group"
+                >
+                  <div className="flex flex-col truncate pr-2">
+                    <span className="text-sm font-bold text-slate-200 group-hover:text-emerald-400 truncate">{item.name}</span>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0">{item.symbol}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono text-slate-400">
           <Radio className="h-3.5 w-3.5 text-emerald-500 animate-ping" />
@@ -202,7 +266,6 @@ export default function App() {
                     </div>
                     <div className="border-t border-slate-900 pt-3 mt-3">
                       <span className="text-xs font-mono text-slate-500 block">Broker Execution Status</span>
-                      {/* 🎯 FIX 2: RENDER THE LIVE ORDER ACTION LOG FEED */}
                       <p className="text-xs text-emerald-400 font-mono font-bold mt-1 animate-pulse">
                         {stockData.position_status || "Scanner Engaged"}
                       </p>
@@ -234,7 +297,7 @@ export default function App() {
                 
                 {/* QUANT EXPLICIT DEFENSIVE CARD */}
                 <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 space-y-4">
-                  <h3 className="text-xs font-mono text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <h3 className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                     <ShieldAlert className="h-4 w-4 text-emerald-500" /> Volatility Management Loop
                   </h3>
                   
@@ -297,7 +360,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 🎯 FIX 3: MOUNT THE REAL-TIME PORTFOLIO TRACKER UNDER DECK */}
             <PortfolioTracker />
           </div>
         ) : (
