@@ -1,0 +1,17 @@
+# Virtual Environment
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Node Modules
+node_modules/
+dist/
+
+# Large Production Data & Weight States
+data/training_data.csv
+data/paper_wallet_state.json
+models/candleflow_lstm.keras
+
+# OS Specific Files
+.DS_Store

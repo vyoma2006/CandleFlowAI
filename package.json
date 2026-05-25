@@ -1,0 +1,22 @@
+{
+  "name": "candleflow",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+   "start:all": "concurrently \"npm run start:brain\" \"npm run start:bridge\" \"npm run start:portal\"",
+  "start:brain": "cd brain && uvicorn main:app --reload --port 8000",
+  "start:bridge": "cd bridge && npm run dev",
+  "start:portal": "cd portal && npm run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
