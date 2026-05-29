@@ -1,5 +1,5 @@
 {
-    "cash": 1562.5,
+    "cash": 1540.9733119763825,
     "equity_curve": [
         100000.0
     ],
@@ -46,12 +46,22 @@
         },
         "ICICIBANK.NS": {
             "type": "BUY",
-            "entry_price": 1292.0,
-            "capital": 1562.5,
-            "stop_loss": 1257.6178676060267,
-            "take_profit": 1360.7642647879463,
-            "timestamp": "2026-05-25 15:26:12"
+            "entry_price": 1272.699951171875,
+            "capital": 1540.9733119763825,
+            "stop_loss": 1238.285657610212,
+            "take_profit": 1341.5285382952009,
+            "timestamp": "2026-05-30 00:42:42"
         }
     },
-    "closed_trades_history": []
+    "closed_trades_history": [
+        {
+            "ticker": "ICICIBANK.NS",
+            "type": "BUY",
+            "entry_price": 1292.0,
+            "exit_price": 1256.4000244140625,
+            "pnl": -43.05337604723479,
+            "result": "SL",
+            "closed_at": "2026-05-30 00:42:41"
+        }
+    ]
 }

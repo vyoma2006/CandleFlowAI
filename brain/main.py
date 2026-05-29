@@ -420,3 +420,59 @@ def get_stock_full_info(query: str):
         }
     except Exception as e:
         return {"error": f"Inference System Exception: {str(e)}"}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ADD THIS ROUTE TO bridge/main.py  (paste after the /api/stock-info route)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/price-history/{ticker}")
+def get_price_history(ticker: str, days: int = 30):
+    """Returns OHLCV + RSI for the last `days` sessions.
+    Used by PriceChart.jsx to render the candlestick / line chart.
+    """
+    try:
+        symbol = ticker.upper().strip()
+        if not symbol.endswith(".NS"):
+            symbol = f"{symbol}.NS"
+        if symbol.endswith(".NS.NS"):
+            symbol = symbol.replace(".NS.NS", ".NS")
+
+        period = "3mo" if days <= 90 else "6mo"
+        df = yf.download(symbol, period=period, interval="1d",
+                         progress=False, ignore_tz=True)
+
+        if df.empty:
+            return {"error": f"No price data found for {symbol}"}
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        df = df.dropna(subset=["Open", "High", "Low", "Close"])
+        df = df.tail(days)
+
+        # Compute RSI inline (no need to import calculate_indicators again)
+        close = df["Close"].astype(float)
+        delta = close.diff()
+        gain  = delta.clip(lower=0).rolling(14).mean()
+        loss  = (-delta.clip(upper=0)).rolling(14).mean()
+        rs    = gain / (loss + 1e-9)
+        rsi   = (100 - 100 / (1 + rs)).round(2)
+
+        candles = []
+        for ts, row in df.iterrows():
+            date_str = ts.strftime("%Y-%m-%d") if hasattr(ts, "strftime") else str(ts)[:10]
+            rsi_val  = float(rsi.loc[ts]) if ts in rsi.index and not np.isnan(rsi.loc[ts]) else None
+            candles.append({
+                "date":   date_str,
+                "open":   round(float(row["Open"]),   2),
+                "high":   round(float(row["High"]),   2),
+                "low":    round(float(row["Low"]),    2),
+                "close":  round(float(row["Close"]),  2),
+                "volume": int(row["Volume"]) if not np.isnan(float(row["Volume"])) else 0,
+                "rsi":    rsi_val,
+            })
+
+        return {"ticker": symbol, "candles": candles}
+
+    except Exception as e:
+        return {"error": f"Price history fetch failed: {str(e)}"}
