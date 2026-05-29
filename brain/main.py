@@ -1,3 +1,10 @@
+import sys
+import os
+# Adds the parent directory (CandleFlow/) to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Now the imports will work
+from bridge.portfolio_manager import get_portfolio, toggle_ticker
 import os
 import yfinance as yf
 import pandas as pd
@@ -11,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from core.indicators import calculate_indicators
+from bridge.portfolio_manager import get_portfolio, toggle_ticker
 
 # 🎯 SECURITY & DESERIALIZATION PROTECTION LAYER
 from core.lstm_engine import TemporalAttention
@@ -159,6 +167,21 @@ def search_tickers_dynamically(q: str = ""):
     
     # Return the clean capped results
     return sorted_results[:8]
+
+# ----------------------------------------------------------------------
+# 📂 ROUTE: PERSISTENT WATCHLIST MANAGEMENT
+# ----------------------------------------------------------------------
+@app.get("/api/user-portfolio")
+def api_get_portfolio():
+    return {"tickers": get_portfolio()}
+
+@app.post("/api/user-portfolio/toggle")
+def api_toggle_portfolio(payload: dict):
+    ticker = payload.get("ticker", "").upper().strip()
+    if not ticker:
+        return {"status": "error", "message": "No ticker provided"}
+    updated_list = toggle_ticker(ticker)
+    return {"status": "success", "tickers": updated_list}
 
 # ----------------------------------------------------------------------
 # 📈 ROUTE 1: REAL-TIME PORTFOLIO & RISK BOUNDARY TRACKER
