@@ -334,7 +334,7 @@ export default function PortfolioPanel({
           <SummaryStrip items={enriched} />
           <AddTickerBar onAdd={handleAdd} />
 
-          <div className="overflow-y-auto flex-1 custom-scrollbar" style={{ maxHeight: '420px' }}>
+          <div className="overflow-y-auto flex-1 custom-scrollbar" style={{ maxHeight: '280px' }}>
             {loading && !enriched.length ? (
               <div className="space-y-2 p-3 animate-pulse">
                 {[...Array(3)].map((_, i) => (

@@ -1,105 +1,66 @@
 import React from 'react';
-import { CheckCircle, XCircle, AlertTriangle, DollarSign, Layers } from 'lucide-react';
+import { Zap, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
 
-// ─── Parses the position_status string from the backend ──────────────────────
-function parseStatus(statusText) {
-  if (!statusText) return null;
-  const t = statusText.toLowerCase();
+// ─── Maps the new signal_quality string from main.py ─────────────────────────
+// Values: "High Conviction — Strong directional spread detected"
+//         "Moderate Conviction — Directional bias present"
+//         "Low Conviction — Weak edge, exercise caution"
+//         "No Edge — Model is near-neutral on this ticker"
 
-  if (t.includes('allocation committed') || t.includes('live signal verified')) {
-    return {
-      type: 'executed',
-      icon: CheckCircle,
-      iconColor: 'text-emerald-400',
-      bgColor: 'bg-emerald-950/40',
-      borderColor: 'border-emerald-900',
-      title: 'Order Executed',
-      body: statusText,
-      action: null,
-    };
-  }
-  if (t.includes('low cash')) {
-    return {
-      type: 'low_cash',
-      icon: DollarSign,
-      iconColor: 'text-amber-400',
-      bgColor: 'bg-amber-950/30',
-      borderColor: 'border-amber-900',
-      title: 'Insufficient Cash Balance',
-      body: 'Your paper wallet has insufficient funds to allocate this position.',
-      action: 'Free up capital by closing an existing position, or reduce position size.',
-    };
-  }
-  if (t.includes('position limit')) {
-    return {
-      type: 'position_limit',
-      icon: Layers,
-      iconColor: 'text-amber-400',
-      bgColor: 'bg-amber-950/30',
-      borderColor: 'border-amber-900',
-      title: 'Max Position Limit Reached',
-      body: 'The paper broker has reached its maximum concurrent open positions.',
-      action: 'Close one or more existing positions before opening a new one.',
-    };
-  }
-  if (t.includes('stand alone') || t.includes('signal ignored')) {
-    return {
-      type: 'ignored',
-      icon: XCircle,
-      iconColor: 'text-rose-400',
-      bgColor: 'bg-rose-950/20',
-      borderColor: 'border-rose-900',
-      title: 'Signal Not Executed',
-      body: 'Broker rules prevented this signal from being acted upon.',
-      action: 'Check cash balance and active position count in the trade log.',
-    };
-  }
-  if (t.includes('monitoring') || t.includes('no live')) {
-    return {
-      type: 'monitoring',
-      icon: AlertTriangle,
-      iconColor: 'text-slate-500',
-      bgColor: 'bg-slate-900/40',
-      borderColor: 'border-slate-800',
-      title: 'Monitoring — No Action Taken',
-      body: 'Signal is below execution threshold or is a HOLD.',
-      action: null,
-    };
-  }
-  // fallback
-  return {
-    type: 'info',
+function parseQuality(text) {
+  if (!text) return null;
+  const t = text.toLowerCase();
+
+  if (t.includes('high conviction')) return {
+    icon: Zap,
+    iconColor: 'text-emerald-400',
+    bgColor:   'bg-emerald-950/30',
+    border:    'border-emerald-900/60',
+    label:     'HIGH CONVICTION',
+    body:      'Strong directional spread — signal is actionable.',
+  };
+  if (t.includes('moderate conviction')) return {
+    icon: TrendingDown,
+    iconColor: 'text-amber-400',
+    bgColor:   'bg-amber-950/20',
+    border:    'border-amber-900/60',
+    label:     'MODERATE CONVICTION',
+    body:      'Directional bias present — proceed with reduced size.',
+  };
+  if (t.includes('low conviction')) return {
     icon: AlertTriangle,
-    iconColor: 'text-slate-500',
-    bgColor: 'bg-slate-900/40',
-    borderColor: 'border-slate-800',
-    title: 'Broker Status',
-    body: statusText,
-    action: null,
+    iconColor: 'text-slate-400',
+    bgColor:   'bg-slate-900/40',
+    border:    'border-slate-800',
+    label:     'LOW CONVICTION',
+    body:      'Weak edge detected — consider waiting for confirmation.',
+  };
+  // "No Edge" or anything else
+  return {
+    icon: Minus,
+    iconColor: 'text-slate-600',
+    bgColor:   'bg-slate-900/20',
+    border:    'border-slate-900',
+    label:     'NO EDGE',
+    body:      'Model is near-neutral — stand aside.',
   };
 }
 
 export default function SignalStatus({ positionStatus }) {
-  const parsed = parseStatus(positionStatus);
+  const parsed = parseQuality(positionStatus);
   if (!parsed) return null;
-
   const Icon = parsed.icon;
 
   return (
-    <div className={`rounded-xl border p-3 flex items-start gap-3 ${parsed.bgColor} ${parsed.borderColor}`}>
-      <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${parsed.iconColor}`} />
+    <div className={`rounded-xl border p-3 flex items-start gap-2.5 ${parsed.bgColor} ${parsed.border}`}>
+      <Icon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${parsed.iconColor}`} />
       <div className="flex-1 min-w-0">
-        <p className={`text-[10px] font-mono font-black tracking-wider ${parsed.iconColor}`}>
-          {parsed.title}
+        <p className={`text-[9px] font-mono font-black tracking-widest ${parsed.iconColor}`}>
+          {parsed.label}
         </p>
         <p className="text-[10px] font-mono text-slate-400 mt-1 leading-relaxed">
           {parsed.body}
         </p>
-        {parsed.action && (
-          <p className="text-[10px] font-mono text-slate-500 mt-1.5 border-t border-slate-800/60 pt-1.5 leading-relaxed">
-            → {parsed.action}
-          </p>
-        )}
       </div>
     </div>
   );

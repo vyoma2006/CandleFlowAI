@@ -9,32 +9,29 @@ import PriceChart      from './components/PriceChart';
 import MetricsGrid     from './components/MetricsGrid';
 import ConfidenceMeter from './components/ConfidenceMeter';
 import SignalStatus    from './components/SignalStatus';
-import TradeLog        from './components/TradeLog';
 
 export default function App() {
-  const [searchQuery,   setSearchQuery]   = useState('RELIANCE');
-  const [typedInput,    setTypedInput]    = useState('');
-  const [suggestions,   setSuggestions]   = useState([]);
-  const [showDropdown,  setShowDropdown]  = useState(false);
-  const [stockData,     setStockData]     = useState(null);
-  const [watchlist,     setWatchlist]     = useState([]);
-  const [loading,       setLoading]       = useState(false);
-  const [error,         setError]         = useState(null);
+  const [searchQuery,  setSearchQuery]  = useState('RELIANCE');
+  const [typedInput,   setTypedInput]   = useState('');
+  const [suggestions,  setSuggestions]  = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [stockData,    setStockData]    = useState(null);
+  const [watchlist,    setWatchlist]    = useState([]);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState(null);
 
-  // ── Portfolio load ──────────────────────────────────────────────────────────
+  // ── Watchlist ───────────────────────────────────────────────────────────────
   const loadWatchlist = async () => {
     try {
       const res  = await fetch('http://localhost:8000/api/user-portfolio');
       const data = await res.json();
       setWatchlist(data.tickers || []);
-    } catch (err) {
-      console.error('Portfolio loading failed:', err);
-    }
+    } catch (err) { console.error('Portfolio loading failed:', err); }
   };
 
   useEffect(() => { loadWatchlist(); }, []);
 
-  // ── Autocomplete debounce ───────────────────────────────────────────────────
+  // ── Autocomplete ────────────────────────────────────────────────────────────
   useEffect(() => {
     const clean = typedInput.trim();
     if (!clean || clean.endsWith('.NS')) { setSuggestions([]); return; }
@@ -42,20 +39,25 @@ export default function App() {
       try {
         const r = await fetch(`http://localhost:8000/api/tickers/search?q=${encodeURIComponent(clean)}`);
         setSuggestions(await r.json());
-      } catch { console.error('Autocomplete error'); }
+      } catch { }
     }, 150);
     return () => clearTimeout(t);
   }, [typedInput]);
 
-  // ── Stock fetch ─────────────────────────────────────────────────────────────
+  // ── Stock analysis ──────────────────────────────────────────────────────────
   const fetchStockAnalysis = async (queryStr) => {
     setLoading(true);
     setError(null);
     try {
       const r    = await fetch(`http://localhost:8000/api/stock-info/${queryStr}`);
       const data = await r.json();
-      if (data.error) { setError(data.error); setStockData(null); }
-      else            { setStockData(data); setTypedInput(''); }
+      if (data.error) {
+        setError(data.error);
+        setStockData(null);
+      } else {
+        setStockData(data);
+        setTypedInput('');
+      }
     } catch {
       setError('Failed to communicate with CandleFlow API gateway. Verify backend is running.');
       setStockData(null);
@@ -94,7 +96,7 @@ export default function App() {
     }
   };
 
-  // ── Signal badge ────────────────────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   const getSignalBadgeStyles = (signal) => {
     if (!signal) return 'bg-slate-800 text-slate-400 border-slate-700';
     const s = signal.toUpperCase();
@@ -105,13 +107,12 @@ export default function App() {
     return 'bg-amber-950 text-amber-400 border-amber-600';
   };
 
-  // ── Risk profile ────────────────────────────────────────────────────────────
   const computeRiskProfile = (data) => {
     if (!data?.price) return { stopLoss: 'N/A', takeProfit: 'N/A', sizing: '0% Allocation' };
     const { price, metrics, ai_signal: signal } = data;
     const atr = metrics?.atr || price * 0.015;
     let stopLoss = 0, takeProfit = 0;
-    let sizing = '0% Capital Weight - Stand Aside (Cash Reserve)';
+    let sizing = '0% Capital Weight — Stand Aside (Cash Reserve)';
     if (signal?.includes('BUY')) {
       stopLoss   = price - 1.5 * atr;
       takeProfit = price + 3.0 * atr;
@@ -134,7 +135,7 @@ export default function App() {
 
   const riskProfile = stockData ? computeRiskProfile(stockData) : null;
 
-  // ───────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
 
@@ -148,11 +149,10 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
               CandleFlow Engine
             </h1>
-            <p className="text-xs text-slate-500 font-mono">v2.5 // Live Paper-Trading Matrix Terminal</p>
+            <p className="text-xs text-slate-500 font-mono">v2.5 // Signal Intelligence Terminal</p>
           </div>
         </div>
 
-        {/* Search */}
         <div className="relative w-full max-w-md mx-4">
           <form onSubmit={handleSearchSubmit} className="relative w-full">
             <input
@@ -174,12 +174,8 @@ export default function App() {
                 <button key={item.symbol} type="button"
                   onMouseDown={e => { e.preventDefault(); setSearchQuery(item.symbol); fetchStockAnalysis(item.symbol); setShowDropdown(false); }}
                   className="w-full text-left px-4 py-3 hover:bg-emerald-950/40 font-mono transition-colors flex justify-between items-center group">
-                  <span className="text-sm font-bold text-slate-200 group-hover:text-emerald-400 truncate pr-2">
-                    {item.name}
-                  </span>
-                  <span className="text-xs font-bold text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0">
-                    {item.symbol}
-                  </span>
+                  <span className="text-sm font-bold text-slate-200 group-hover:text-emerald-400 truncate pr-2">{item.name}</span>
+                  <span className="text-xs font-bold text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0">{item.symbol}</span>
                 </button>
               ))}
             </div>
@@ -192,10 +188,9 @@ export default function App() {
         </div>
       </header>
 
-      {/* ── MAIN BODY — 3-column layout ── */}
+      {/* ── BODY ── */}
       <div className="max-w-[1600px] mx-auto p-6">
 
-        {/* Error banner */}
         {error && (
           <div className="bg-rose-950/40 border border-rose-800/60 text-rose-300 p-4 rounded-xl flex items-start space-x-3 mb-6">
             <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
@@ -207,14 +202,10 @@ export default function App() {
         )}
 
         {loading ? (
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px_280px] gap-6 animate-pulse">
+          <div className="grid grid-cols-1 xl:grid-cols-[65fr_35fr] gap-6 animate-pulse">
             <div className="space-y-6">
               <div className="h-36 bg-slate-900 rounded-2xl border border-slate-800" />
               <div className="h-72 bg-slate-900 rounded-2xl border border-slate-800" />
-              <div className="h-48 bg-slate-900 rounded-2xl border border-slate-800" />
-            </div>
-            <div className="space-y-6">
-              <div className="h-64 bg-slate-900 rounded-2xl border border-slate-800" />
               <div className="h-48 bg-slate-900 rounded-2xl border border-slate-800" />
             </div>
             <div className="space-y-6">
@@ -222,20 +213,25 @@ export default function App() {
               <div className="h-48 bg-slate-900 rounded-2xl border border-slate-800" />
             </div>
           </div>
+
         ) : stockData ? (
 
-          // ── 3-COLUMN GRID ──────────────────────────────────────────────────
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px_280px] gap-6 items-start">
+          <div className="grid grid-cols-1 xl:grid-cols-[65fr_35fr] gap-6 items-start">
 
-            {/* ── COL 1: Main analysis ── */}
+            {/* ── COL 1: Main ── */}
             <div className="space-y-6">
 
               {/* Ticker banner */}
               <div className="bg-slate-900/60 border border-slate-900 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/40">
-                    {stockData.engine_mode}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40 tracking-widest">
+                      NSE
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-600 tracking-widest">
+                      SIGNAL INTELLIGENCE
+                    </span>
+                  </div>
                   <h2 className="text-3xl font-extrabold tracking-tight font-mono mt-2 text-slate-100">
                     {stockData.ticker}
                   </h2>
@@ -254,10 +250,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* ── PRICE CHART (new) ── */}
+              {/* Price chart */}
               <PriceChart ticker={stockData.ticker} />
 
-              {/* AI signal card */}
+              {/* Signal card */}
               <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-900 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-3 gap-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -268,7 +264,7 @@ export default function App() {
                       <BarChart3 className="h-3.5 w-3.5" />
                       Core Inference Output
                     </h3>
-                    <div className="mt-3 flex items-baseline gap-3">
+                    <div className="mt-3">
                       <span className={`px-4 py-2 text-xl font-mono font-black tracking-wider rounded-xl border ${getSignalBadgeStyles(stockData.ai_signal)}`}>
                         {stockData.ai_signal}
                       </span>
@@ -280,26 +276,31 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ── CONFIDENCE METER (new) ── */}
+                {/* Confidence meter */}
                 <div className="flex items-center justify-center">
                   <ConfidenceMeter
                     confidence={stockData.confidence}
                     signal={stockData.ai_signal}
+                    netSpread={stockData.net_spread}
                   />
                 </div>
 
-                {/* Confidence band + signal status */}
+                {/* Classification + signal quality */}
                 <div className="bg-slate-900/40 rounded-xl border border-slate-900/80 p-4 flex flex-col justify-between gap-3">
                   <div>
-                    <span className="text-xs font-mono text-slate-500 block uppercase">Confidence Classification</span>
-                    <p className="text-sm font-medium text-slate-300 mt-1">{stockData.confidence_band}</p>
+                    <span className="text-xs font-mono text-slate-500 block uppercase">
+                      Confidence Classification
+                    </span>
+                    <p className="text-sm font-medium text-slate-300 mt-1">
+                      {stockData.confidence_band}
+                    </p>
                   </div>
-                  {/* ── SIGNAL STATUS (replaces dead amber text) ── */}
-                  <SignalStatus positionStatus={stockData.position_status} />
+                  {/* Signal quality — replaces "Signal Ignored" broker noise */}
+                  <SignalStatus positionStatus={stockData.signal_quality} />
                 </div>
               </div>
 
-              {/* ── METRICS GRID with context (replaces raw numbers) ── */}
+              {/* Metrics grid */}
               <div className="bg-slate-900/30 border border-slate-900 rounded-2xl p-6">
                 <h3 className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-1.5">
                   <Percent className="h-3.5 w-3.5" />
@@ -309,8 +310,17 @@ export default function App() {
               </div>
             </div>
 
-            {/* ── COL 2: Risk + News ── */}
+            {/* ── COL 2: Portfolio + Risk + News ── */}
             <div className="space-y-6">
+
+              {/* Portfolio watchlist — full width now, more breathing room */}
+              <PortfolioPanel
+                watchlist={watchlist}
+                activeTicker={searchQuery}
+                onViewAnalysis={handleViewAnalysis}
+                onToggle={toggleWatchlist}
+                onRefresh={loadWatchlist}
+              />
 
               {/* Risk management */}
               <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 space-y-4">
@@ -347,7 +357,9 @@ export default function App() {
                       <p className="text-xs font-medium text-slate-300 group-hover:text-emerald-400 transition-colors line-clamp-2 leading-relaxed">
                         {item.headline}
                       </p>
-                      <span className="text-[10px] text-slate-600 font-mono block mt-1.5">Source // {item.source}</span>
+                      <span className="text-[10px] text-slate-600 font-mono block mt-1.5">
+                        Source // {item.source}
+                      </span>
                     </a>
                   )) : (
                     <div className="text-center py-6 text-slate-600 font-mono text-xs">
@@ -358,18 +370,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* ── COL 3: Portfolio + Trade Log (always visible) ── */}
-            <div className="space-y-6">
-              <PortfolioPanel
-                watchlist={watchlist}
-                activeTicker={searchQuery}
-                onViewAnalysis={handleViewAnalysis}
-                onToggle={toggleWatchlist}
-                onRefresh={loadWatchlist}
-              />
-              {/* ── TRADE LOG (new) ── */}
-              <TradeLog />
-            </div>
           </div>
 
         ) : (

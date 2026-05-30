@@ -57,9 +57,12 @@ function MetricCard({ metricKey, value }) {
     label: '', color: 'text-slate-400', bar: 'bg-slate-600', pct: 50,
   };
 
-  const displayVal = typeof value === 'number' && value % 1 !== 0
+  // price_to_sma20 hovers near 1.0 so `value % 1 !== 0` barely triggers — force 3dp for it
+  const displayVal = metricKey === 'price_to_sma20'
     ? value.toFixed(3)
-    : value;
+    : typeof value === 'number' && value % 1 !== 0
+      ? value.toFixed(3)
+      : value;
 
   return (
     <div className="bg-slate-950/60 border border-slate-900 p-3.5 rounded-xl flex flex-col gap-2">

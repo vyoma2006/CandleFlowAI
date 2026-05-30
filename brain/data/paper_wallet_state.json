@@ -1,5 +1,5 @@
 {
-    "cash": 1540.9733119763825,
+    "cash": 0.0,
     "equity_curve": [
         100000.0
     ],
@@ -51,6 +51,14 @@
             "stop_loss": 1238.285657610212,
             "take_profit": 1341.5285382952009,
             "timestamp": "2026-05-30 00:42:42"
+        },
+        "TOKYOPLAST.NS": {
+            "type": "BUY",
+            "entry_price": 88.01000213623047,
+            "capital": 1540.9733119763825,
+            "stop_loss": 83.323575428554,
+            "take_profit": 97.38285555158342,
+            "timestamp": "2026-05-30 16:57:21"
         }
     },
     "closed_trades_history": [
