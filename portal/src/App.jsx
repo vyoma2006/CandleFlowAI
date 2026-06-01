@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, ShieldAlert, Activity, Search,
-  Newspaper, BarChart3, Radio, Percent, AlertTriangle,
+  Newspaper, BarChart3, Radio, Percent, AlertTriangle, LogOut, User,
 } from 'lucide-react';
 
 import PortfolioPanel  from './components/PortfolioPanel';
@@ -9,8 +9,16 @@ import PriceChart      from './components/PriceChart';
 import MetricsGrid     from './components/MetricsGrid';
 import ConfidenceMeter from './components/ConfidenceMeter';
 import SignalStatus    from './components/SignalStatus';
+import AuthGate        from './components/AuthGate';
+import { useAuth }     from './hooks/useAuth';
 
 export default function App() {
+  const {
+    isAuthed, user, login, logout, register,
+    authFetch, loading: authLoading, error: authError
+  } = useAuth();
+
+  // ── ALL hooks must come before any conditional return ───────────────────────
   const [searchQuery,  setSearchQuery]  = useState('RELIANCE');
   const [typedInput,   setTypedInput]   = useState('');
   const [suggestions,  setSuggestions]  = useState([]);
@@ -23,13 +31,13 @@ export default function App() {
   // ── Watchlist ───────────────────────────────────────────────────────────────
   const loadWatchlist = async () => {
     try {
-      const res  = await fetch('http://localhost:8000/api/user-portfolio');
+      const res  = await authFetch('http://localhost:8000/api/user-portfolio');
       const data = await res.json();
       setWatchlist(data.tickers || []);
     } catch (err) { console.error('Portfolio loading failed:', err); }
   };
 
-  useEffect(() => { loadWatchlist(); }, []);
+  useEffect(() => { if (isAuthed) loadWatchlist(); }, [isAuthed]);
 
   // ── Autocomplete ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -66,12 +74,12 @@ export default function App() {
     }
   };
 
+  // ── Toggle watchlist ────────────────────────────────────────────────────────
   const toggleWatchlist = async (ticker) => {
     try {
-      await fetch('http://localhost:8000/api/user-portfolio/toggle', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ticker }),
+      await authFetch('http://localhost:8000/api/user-portfolio/toggle', {
+        method: 'POST',
+        body:   JSON.stringify({ ticker }),
       });
       loadWatchlist();
     } catch (err) { console.error('Portfolio update failed:', err); }
@@ -83,7 +91,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  useEffect(() => { fetchStockAnalysis(searchQuery); }, []);
+  useEffect(() => { if (isAuthed) fetchStockAnalysis(searchQuery); }, [isAuthed]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -135,6 +143,18 @@ export default function App() {
 
   const riskProfile = stockData ? computeRiskProfile(stockData) : null;
 
+  // ── Auth gate — AFTER all hooks ─────────────────────────────────────────────
+  if (!isAuthed) {
+    return (
+      <AuthGate
+        onLogin={login}
+        onRegister={register}
+        loading={authLoading}
+        error={authError}
+      />
+    );
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
@@ -182,9 +202,22 @@ export default function App() {
           )}
         </div>
 
-        <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono text-slate-400">
-          <Radio className="h-3.5 w-3.5 text-emerald-500 animate-ping" />
-          <span>NSE_GATEWAY_ONLINE</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono text-slate-400">
+            <Radio className="h-3.5 w-3.5 text-emerald-500 animate-ping" />
+            <span>NSE_GATEWAY_ONLINE</span>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+            <User className="h-3 w-3 text-emerald-500" />
+            <span className="text-xs font-mono text-slate-400">{user?.username}</span>
+            <button
+              onClick={logout}
+              className="ml-1 text-slate-600 hover:text-rose-400 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="h-3 w-3" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -257,7 +290,6 @@ export default function App() {
               <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-900 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-3 gap-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
-                {/* Signal + certainty */}
                 <div className="flex flex-col justify-between space-y-4">
                   <div>
                     <h3 className="text-xs font-mono text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
@@ -276,7 +308,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Confidence meter */}
                 <div className="flex items-center justify-center">
                   <ConfidenceMeter
                     confidence={stockData.confidence}
@@ -285,7 +316,6 @@ export default function App() {
                   />
                 </div>
 
-                {/* Classification + signal quality */}
                 <div className="bg-slate-900/40 rounded-xl border border-slate-900/80 p-4 flex flex-col justify-between gap-3">
                   <div>
                     <span className="text-xs font-mono text-slate-500 block uppercase">
@@ -295,7 +325,6 @@ export default function App() {
                       {stockData.confidence_band}
                     </p>
                   </div>
-                  {/* Signal quality — replaces "Signal Ignored" broker noise */}
                   <SignalStatus positionStatus={stockData.signal_quality} />
                 </div>
               </div>
@@ -313,7 +342,6 @@ export default function App() {
             {/* ── COL 2: Portfolio + Risk + News ── */}
             <div className="space-y-6">
 
-              {/* Portfolio watchlist — full width now, more breathing room */}
               <PortfolioPanel
                 watchlist={watchlist}
                 activeTicker={searchQuery}
@@ -322,7 +350,6 @@ export default function App() {
                 onRefresh={loadWatchlist}
               />
 
-              {/* Risk management */}
               <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 space-y-4">
                 <h3 className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <ShieldAlert className="h-4 w-4 text-emerald-500" />
@@ -344,7 +371,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* News */}
               <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 space-y-4">
                 <h3 className="text-xs font-mono text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                   <Newspaper className="h-4 w-4" />
