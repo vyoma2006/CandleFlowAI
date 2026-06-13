@@ -129,6 +129,13 @@ async def application_lifespan(app: FastAPI):
 
 app = FastAPI(title="CandleFlow Engine", lifespan=application_lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # ──────────────────────────────────────────────────────────────────────────────
 # LSTM MODEL
 # ──────────────────────────────────────────────────────────────────────────────
