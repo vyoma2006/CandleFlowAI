@@ -262,7 +262,7 @@ export default function PortfolioPanel({
     try {
       const results = await Promise.allSettled(
         tickers.map(t =>
-          fetch(`http://localhost:8000/api/stock-info/${t}`)
+          fetch(`https://candleflowai.onrender.com/api/stock-info/${t}`)
             .then(r => r.json())
             .catch(() => ({ ticker: t, _failed: true }))
         )
