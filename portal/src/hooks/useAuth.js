@@ -48,36 +48,41 @@ export function useAuth() {
 
   // ── Login ─────────────────────────────────────────────────────────────────
   const login = async (username, password) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // OAuth2 password flow requires form-encoded body
-      const res = await fetch(`${API}/api/auth/login`, {
+  setLoading(true);
+  setError(null);
+
+  try {
+    const res = await fetch(`${API}/api/auth/login`, {
       method: "POST",
       headers: {
-      "Content-Type": "application/json",
-       },
-      body: JSON.stringify({
-      username,
-      password,
-       }),
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail ?? 'Login failed');
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        username,
+        password,
+      }),
+    });
 
-      localStorage.setItem(TOKEN_KEY, data.access_token);
-      localStorage.setItem(USER_KEY,  JSON.stringify({ username: data.username }));
-      setToken(data.access_token);
-      setUser({ username: data.username });
-      return true;
-    } catch (e) {
-      setError(e.message);
-      return false;
-    } finally {
-      setLoading(false);
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail ?? "Login failed");
     }
-  };
+
+    localStorage.setItem(TOKEN_KEY, data.access_token);
+    localStorage.setItem(USER_KEY, JSON.stringify({ username: data.username }));
+
+    setToken(data.access_token);
+    setUser({ username: data.username });
+
+    return true;
+  } catch (e) {
+    setError(e.message);
+    return false;
+  } finally {
+    setLoading(false);
+  }
+ };
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const logout = () => {
