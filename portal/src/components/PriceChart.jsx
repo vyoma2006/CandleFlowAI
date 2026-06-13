@@ -165,7 +165,7 @@ export default function PriceChart({ ticker }) {
     if (!ticker) return;
     setLoading(true);
     setError(null);
-    fetch(`http://localhost:8000/api/price-history/${ticker}?days=${range}`)
+    fetch(`https://candleflowai.onrender.com/api/price-history/${ticker}?days=${range}`)
       .then(r => r.json())
       .then(d => {
         if (d.error) { setError(d.error); setCandles([]); }

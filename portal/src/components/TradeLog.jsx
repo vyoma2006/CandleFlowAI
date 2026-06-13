@@ -94,7 +94,7 @@ export default function TradeLog() {
 
   const load = () => {
     setLoading(true);
-    fetch('http://localhost:8000/api/portfolio')
+    fetch('https://candleflowai.onrender.com/api/portfolio')
       .then(r => r.json())
       .then(d => setData(d))
       .catch(() => setData(null))

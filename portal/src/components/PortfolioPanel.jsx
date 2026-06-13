@@ -146,7 +146,7 @@ const AddTickerBar = ({ onAdd }) => {
     if (!clean || clean.endsWith('.NS')) { setSuggestions([]); return; }
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`http://localhost:8000/api/tickers/search?q=${encodeURIComponent(clean)}`);
+        const r = await fetch(`https://candleflowai.onrender.com/api/tickers/search?q=${encodeURIComponent(clean)}`);
         const d = await r.json();
         setSuggestions(d ?? []);
       } catch { setSuggestions([]); }
