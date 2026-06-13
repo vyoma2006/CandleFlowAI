@@ -26,6 +26,7 @@ from bridge.auth import (
 )
 
 
+
 try:
     from tensorflow.keras.models import load_model as load_lstm_model
     HAS_TF = True
@@ -236,6 +237,12 @@ def register(
     payload: RegisterPayload,
     db: Session = Depends(get_db)
 ):
+    if len(payload.password) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="Password too long (max 72 characters)"
+        )
+
     user = create_user(
         payload.username,
         payload.password,
@@ -257,17 +264,26 @@ class LoginPayload(BaseModel):
 
 
 @app.post("/api/auth/login", tags=["auth"])
-def login(payload: LoginPayload, db: Session = Depends(get_db)):
-    user = authenticate_user(
-        payload.username,
-        payload.password,
-        db
-    )
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    username = form_data.username.lower().strip()
+    password = form_data.password.strip()
+
+    # safety (bcrypt fix)
+    if len(password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="Password too long (max 72 bytes)"
+        )
+
+    user = authenticate_user(username, password, db)
 
     if not user:
         raise HTTPException(
             status_code=401,
-            detail="Incorrect username or password."
+            detail="Incorrect username or password"
         )
 
     token = create_access_token({"sub": user.username})

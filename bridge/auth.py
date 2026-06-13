@@ -12,6 +12,10 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from passlib.context import CryptContext
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
+)
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -41,8 +45,11 @@ def get_user_by_username(username: str, db: Session) -> Optional[User]:
 
 
 def create_user(username: str, password: str, db: Session) -> User:
+    # normalize inputs
     key = username.lower().strip()
+    password = password.strip()
 
+    # validations
     if len(key) < 3:
         raise HTTPException(
             status_code=400,
@@ -55,21 +62,27 @@ def create_user(username: str, password: str, db: Session) -> User:
             detail="Password must be at least 8 characters."
         )
 
+    # bcrypt hard limit safety
     if len(password.encode("utf-8")) > 72:
         raise HTTPException(
             status_code=400,
-            detail="Password cannot exceed 72 characters."
+            detail="Password cannot exceed 72 bytes."
         )
 
+    # duplicate user check
     if db.query(User).filter(User.username == key).first():
         raise HTTPException(
             status_code=409,
             detail="Username already taken."
         )
 
+    # safe hash (IMPORTANT FIX)
+    hashed_password = pwd_context.hash(password[:72])
+
+    # create user
     user = User(
         username=key,
-        hashed_password=pwd_context.hash(password)
+        hashed_password=hashed_password
     )
 
     db.add(user)
@@ -83,10 +96,20 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def authenticate_user(username: str, password: str, db: Session) -> Optional[User]:
-    user = get_user_by_username(username, db)
-    if not user or not verify_password(password, user.hashed_password):
+def authenticate_user(username, password, db):
+    user = db.query(User).filter(User.username == username.lower().strip()).first()
+
+    if not user:
         return None
+
+    password = password.strip()
+
+    if len(password.encode("utf-8")) > 72:
+        return None
+
+    if not pwd_context.verify(password[:72], user.hashed_password):
+        return None
+
     return user
 
 
