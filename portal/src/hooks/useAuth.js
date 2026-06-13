@@ -53,10 +53,16 @@ export function useAuth() {
     try {
       // OAuth2 password flow requires form-encoded body
       const res = await fetch(`${API}/api/auth/login`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    new URLSearchParams({ username, password }),
+      method: "POST",
+      headers: {
+      "Content-Type": "application/json",
+       },
+      body: JSON.stringify({
+      username,
+      password,
+       }),
       });
+      
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail ?? 'Login failed');
 
