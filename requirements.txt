@@ -12,3 +12,7 @@ plotly
 yfinance
 python-dotenv
 joblib
+tensorflow
+sqlalchemy
+python-multipart
+requests
