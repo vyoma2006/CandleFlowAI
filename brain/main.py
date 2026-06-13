@@ -243,14 +243,18 @@ def register(
     }
 
 
+from pydantic import BaseModel
+
+class LoginPayload(BaseModel):
+    username: str
+    password: str
+
+
 @app.post("/api/auth/login", tags=["auth"])
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
-):
+def login(payload: LoginPayload, db: Session = Depends(get_db)):
     user = authenticate_user(
-        form_data.username,
-        form_data.password,
+        payload.username,
+        payload.password,
         db
     )
 
@@ -270,12 +274,11 @@ def login(
 
 @app.get("/api/auth/me", tags=["auth"])
 def me(current_user: dict = Depends(get_current_user)):
-    """Returns the currently authenticated user (no password)."""
     return {
-    "id": current_user.id,
-    "username": current_user.username,
-    "created_at": current_user.created_at,
-}
+        "id": current_user["id"],
+        "username": current_user["username"],
+        "created_at": current_user["created_at"],
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
