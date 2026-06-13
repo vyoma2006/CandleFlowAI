@@ -164,7 +164,10 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "https://candle-flow-ai-1d8s.vercel.app",  # replace with your frontend URL
+        "http://localhost:5173",               # optional local dev
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
