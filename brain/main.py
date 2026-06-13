@@ -16,8 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from core.indicators import calculate_indicators
-from core.lstm_engine import TemporalAttention
+from brain.core.indicators import calculate_indicators
+from brain.core.lstm_engine import TemporalAttention
 from sqlalchemy.orm import Session
 from bridge.database import get_db
 from bridge.auth import (
