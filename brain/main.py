@@ -132,7 +132,13 @@ app = FastAPI(title="CandleFlow Engine", lifespan=application_lifespan)
 # ──────────────────────────────────────────────────────────────────────────────
 # LSTM MODEL
 # ──────────────────────────────────────────────────────────────────────────────
-LSTM_PATH  = 'models/candleflow_lstm.keras'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+LSTM_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "candleflow_lstm.keras"
+)
 lstm_model = None
 
 if HAS_TF and os.path.exists(LSTM_PATH):
