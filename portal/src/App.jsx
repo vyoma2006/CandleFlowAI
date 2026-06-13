@@ -31,7 +31,7 @@ export default function App() {
   // ── Watchlist ───────────────────────────────────────────────────────────────
   const loadWatchlist = async () => {
     try {
-      const res  = await authFetch('http://localhost:8000/api/user-portfolio');
+      const res  = await authFetch('https://candleflowai.onrender.com/api/user-portfolio');
       const data = await res.json();
       setWatchlist(data.tickers || []);
     } catch (err) { console.error('Portfolio loading failed:', err); }
@@ -45,7 +45,7 @@ export default function App() {
     if (!clean || clean.endsWith('.NS')) { setSuggestions([]); return; }
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`http://localhost:8000/api/tickers/search?q=${encodeURIComponent(clean)}`);
+        const r = await fetch(`https://candleflowai.onrender.com/api/tickers/search?q=${encodeURIComponent(clean)}`);
         setSuggestions(await r.json());
       } catch { }
     }, 150);
@@ -57,7 +57,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const r    = await fetch(`http://localhost:8000/api/stock-info/${queryStr}`);
+      const r    = await fetch(`https://candleflowai.onrender.com/api/stock-info/${queryStr}`);
       const data = await r.json();
       if (data.error) {
         setError(data.error);
@@ -77,7 +77,7 @@ export default function App() {
   // ── Toggle watchlist ────────────────────────────────────────────────────────
   const toggleWatchlist = async (ticker) => {
     try {
-      await authFetch('http://localhost:8000/api/user-portfolio/toggle', {
+      await authFetch('https://candleflowai.onrender.com/api/user-portfolio/toggle', {
         method: 'POST',
         body:   JSON.stringify({ ticker }),
       });
