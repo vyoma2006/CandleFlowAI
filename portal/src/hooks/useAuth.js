@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-const API = 'http://localhost:8000';
+const API = 'https://candleflowai.onrender.com';
 const TOKEN_KEY = 'candleflow_token';
 const USER_KEY  = 'candleflow_user';
 
