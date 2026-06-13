@@ -17,3 +17,4 @@ requests
 sqlalchemy
 python-multipart
 passlib[bcrypt]
+python-jose[cryptography]
